@@ -1,0 +1,39 @@
+name: LunaGuerra
+version: '${project.version}'
+main: dolozimm.lunaguerra.LunaGuerraPlugin
+api-version: '1.21'
+depend: [SimpleClans]
+authors: [dolozimm]
+description: Plugin para guerras de clans usando SimpleClans
+
+commands:
+  guerra:
+    description: Comandos do LunaGuerra
+    usage: /guerra <subcommand>
+    permission: lunaguerra.use
+
+permissions:
+  lunaguerra.*:
+    description: Todas as permissões do LunaGuerra
+    default: op
+    children:
+      lunaguerra.admin: true
+      lunaguerra.join: true
+      lunaguerra.spectate: true
+      lunaguerra.set: true
+      lunaguerra.info: true
+  lunaguerra.admin:
+    description: Comandos administrativos
+    default: op
+  lunaguerra.join:
+    description: Entrar em guerras
+    default: true
+  lunaguerra.spectate:
+    description: Acessar camarote
+    default: true
+  lunaguerra.set:
+    description: Definir localizações
+    default: op
+  lunaguerra.info:
+    description: Ver informações da arena
+    default: true

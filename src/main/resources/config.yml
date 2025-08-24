@@ -1,0 +1,39 @@
+general:
+  # Número padrão de jogadores permitidos por clã em cada arena
+  default_players_per_clan: 5
+  
+  # Tempo de espera padrão (em segundos) antes de iniciar a guerra
+  default_wait_seconds: 180
+  
+  # Número máximo de vencedores a manter no histórico
+  winners_history_limit: 20
+
+# Comandos personalizados a serem executados quando uma guerra começar ou terminar
+custom_messages:
+  # Comandos a serem executados quando uma guerra começar, padrão é falso, irá substituir a mensagem padrão
+  # Placeholders disponíveis:
+  # %arena% - Nome de exibição da arena
+  custom_guerrastart:
+    enabled: false
+    commands:
+      - 'broadcast &6[Guerra] Uma guerra foi iniciada na %arena% digite /guerra entrar arenateste para se juntar!'
+
+  # Comandos a serem executados quando uma guerra terminar, padrão é falso, não substitui o relatório padrão
+  # Placeholders disponíveis:
+  # %arena% - Nome de exibição da arena
+  # %tagclanvencedor% - Tag do clã vencedor
+  # %prizeholder% - Nome do jogador que receberá o prêmio pelo clã vencedor
+  # O %prizeholder% seguirá, na ordem de prioridade:
+  # 1. Um líder online do clã vencedor (aleatório se houver mais de um)
+  # 2. O membro online que mais matou do clã vencedor
+  # 3. Um membro online aleatório do clã vencedor
+  custom_guerraend:
+    enabled: false
+    commands:
+      - 'give %prizeholder% diamond 5'
+
+# Configurações das arenas, crie uma com /guerra create <arena>
+arenas: {}
+
+# Lista de vencedores anteriores, não edite manualmente a menos que saiba o que está fazendo
+winners: {}
