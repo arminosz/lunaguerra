@@ -1,4 +1,5 @@
 # LunaGuerra
+![Version](https://img.shields.io/badge/version-1.4.5-purple.svg)
 
 Um plugin para Spigot que fornece funcionalidades de guerras de clãs integrado com o **SimpleClans**. Permite que clãs batalhem em arenas personalizadas com kits configuráveis.
 
