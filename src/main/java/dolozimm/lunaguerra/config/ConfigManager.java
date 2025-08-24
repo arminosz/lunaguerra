@@ -28,7 +28,6 @@ public class ConfigManager {
 
     public void loadConfigs() {
         createFiles();
-        config = YamlConfiguration.loadConfiguration(configFile);
         messages = YamlConfiguration.loadConfiguration(messagesFile);
         
         try {
@@ -43,7 +42,6 @@ public class ConfigManager {
 
     private void createFiles() {
         configFile = new File(plugin.getDataFolder(), "config.yml");
-        messagesFile = new File(plugin.getDataFolder(), "messages.yml");
 
         if (!plugin.getDataFolder().exists()) {
             plugin.getDataFolder().mkdirs();
@@ -53,14 +51,31 @@ public class ConfigManager {
             plugin.saveResource("config.yml", false);
         }
 
-        if (!messagesFile.exists()) {
-            plugin.saveResource("messages.yml", false);
+        // Save both language files if they don't exist
+        if (!new File(plugin.getDataFolder(), "messages_ptBR.yml").exists()) {
+            plugin.saveResource("messages_ptBR.yml", false);
+        }
+        if (!new File(plugin.getDataFolder(), "messages_en.yml").exists()) {
+            plugin.saveResource("messages_en.yml", false);
+        }
+
+        // Load the correct messages file based on config
+        config = YamlConfiguration.loadConfiguration(configFile);
+        String messagesFile = config.getString("general.messages", "messages_ptBR.yml");
+        this.messagesFile = new File(plugin.getDataFolder(), messagesFile);
+        
+        if (!this.messagesFile.exists()) {
+            plugin.getLogger().warning("Selected messages file " + messagesFile + " not found! Defaulting to messages_ptBR.yml");
+            this.messagesFile = new File(plugin.getDataFolder(), "messages_ptBR.yml");
         }
     }
 
     private void validateConfig() {
         if (!config.contains("general")) {
             throw new RuntimeException("Missing 'general' section in config.yml");
+        }
+        if (!config.contains("general.messages")) {
+            throw new RuntimeException("Missing 'general.messages' setting in config.yml");
         }
         if (!config.contains("custom_messages")) {
             throw new RuntimeException("Missing 'custom_messages' section in config.yml");

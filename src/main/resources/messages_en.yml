@@ -1,0 +1,50 @@
+guerra:
+  started: "&aWar started in arena %arena%! Use /guerra entrar to join."
+  countdown: "War starts in: %time%"
+  countdown_chat: "&eThe war will begin in %time%!"
+  joined: "&aYou joined the war in arena %arena%!"
+  left: "&cYou left the war!"
+  full_clan: "&cYour clan has reached the player limit in this war!"
+  only_clan_members: "&cYou don't have a clan! Get one to participate."
+  spectate: "&aTeleported to spectator area!"
+  not_found_arena: "&cArena not found!"
+  invalid_clan: "&cInvalid or non-existent clan!"
+  info: "&6=== Arena Information %arena% ==="
+  winner_announce: "&6Clan %tagclanvencedor% &6won the war in arena %arena%!"
+  
+  report_title: "&6=== War Report - %arena% ==="
+  report_line_position: "&e%position%th place - Clan %clan%"
+  report_line_kills: "&7Total clan kills: %kills%"
+  report_line_topkiller: "&7Clan top killer: %player% with %kills% kills"
+  report_line_prize: "&a&lYour clan won the war! &aPrize will be delivered!"
+  report_line_no_prize: "&cYour clan didn't win the war"
+
+  prize_executed: "&aPrize delivered to: %player%"
+  war_started: "&aWar started! Teleporting players..."
+  not_enough_players: "&cNot enough players to start the war."
+  not_configured: "&cArena is not fully configured."
+  already_active: "&cThere's already an active war in this arena."
+  invalid_location: "&cInvalid location. Use: spectator, waiting, start or exit"
+  cancelled: "&cThe war has been cancelled!"
+  kit_saved: "&aArena %arena% kit has been saved successfully!"
+  kit_applied: "&aKit applied to players!"
+  
+  help:
+    header: "&6=== LunaGuerra Help ==="
+    admin: |
+      &e/guerra start <arena> &7- Start a war
+      &e/guerra stop <arena> &7- Stop a war
+      &e/guerra forcestart <arena> &7- Force start a war
+      &e/guerra create <arena> &7- Create a new arena
+      &e/guerra delete <arena> &7- Delete an arena
+      &e/guerra set <arena> <location> &7- Set arena location
+      &e/guerra limite <arena> <limit> &7- Set arena player limit
+      &e/guerra displayname <arena> <name> &7- Set arena display name (use quotes if name has spaces)
+      &e/guerra kit <arena> &7- Configure arena kit
+      &e/guerra reload &7- Reload configurations
+    user: |
+      &e/guerra entrar <arena> &7- Join a war
+      &e/guerra sair &7- Leave current war
+      &e/guerra camarote &7- Watch the war from spectator area
+      &e/guerra info <arena> &7- View arena information
+      &e/guerra vencedores [amount] &7- View last winners

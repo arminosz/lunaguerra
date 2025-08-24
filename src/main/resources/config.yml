@@ -1,4 +1,10 @@
 general:
+  # If you're a english speaker, please consider reading the config_en.yml in the github repository for better understanding
+  # https://github.com/arminosz/lunaguerra/blob/main/config_en.yml
+
+  # Language file to use (messages_ptBR.yml or messages_en.yml)
+  messages: messages_ptBR.yml
+  
   # Número padrão de jogadores permitidos por clã em cada arena
   default_players_per_clan: 5
   
