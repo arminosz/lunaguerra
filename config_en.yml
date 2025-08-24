@@ -1,0 +1,42 @@
+general:
+  # Language file to use (messages_ptBR.yml or messages_en.yml)
+  messages: messages_ptBR.yml
+  
+  # Default number of players allowed per clan in each arena
+  default_players_per_clan: 5
+  
+  # Default waiting time (in seconds) before starting the war
+  default_wait_seconds: 180
+  
+  # Maximum number of winners to keep in the history
+  winners_history_limit: 20
+
+# Custom commands to execute when a war starts or ends
+custom_messages:
+  # Commands to execute when a war starts, default is false, will override the default message
+  # Available placeholders:
+  # %arena% - Display name of the arena
+  custom_guerrastart:
+    enabled: false
+    commands:
+      - 'broadcast &6[War] A war has started in %arena%! Type /guerra entrar arenateste to join!'
+
+  # Commands to execute when a war ends, default is false, does not override the default report
+  # Available placeholders:
+  # %arena% - Display name of the arena
+  # %tagclanvencedor% - Tag of the winning clan
+  # %prizeholder% - Name of the player who will receive the prize for the winning clan
+  # The %prizeholder% will follow, in order of priority:
+  # 1. An online leader of the winning clan (random if there is more than one)
+  # 2. The online member with the most kills from the winning clan
+  # 3. A random online member of the winning clan
+  custom_guerraend:
+    enabled: false
+    commands:
+      - 'give %prizeholder% diamond 5'
+
+# Arena settings, create one with /guerra create <arena>
+arenas: {}
+
+# List of previous winners, do not edit manually unless you know what you are doing
+winners: {}
