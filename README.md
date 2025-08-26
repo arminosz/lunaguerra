@@ -1,6 +1,5 @@
-# LunaGuerra
+# LunaGuerra ![Version](https://img.shields.io/badge/version-1.4.5-purple.svg) 
 [![Download](https://img.shields.io/badge/Download-FF6B6B?style=for-the-badge&logo=download&logoColor=white)](https://www.spigotmc.org/resources/lunaguerra.128286)
-![Version](https://img.shields.io/badge/version-1.4.5-purple.svg) 
 
 > PS: *If you're an English speaker, please refer to the [`config_en.yml`](./config_en.yml) file for guidance. **It has no functional use** and you should use the standard config.yml, this one is provided only for reference. You can also click the download button above to see a tutorial and translated commands*
 
