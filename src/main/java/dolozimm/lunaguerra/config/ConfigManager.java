@@ -51,7 +51,6 @@ public class ConfigManager {
             plugin.saveResource("config.yml", false);
         }
 
-        // Save both language files if they don't exist
         if (!new File(plugin.getDataFolder(), "messages_ptBR.yml").exists()) {
             plugin.saveResource("messages_ptBR.yml", false);
         }

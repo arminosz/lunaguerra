@@ -14,6 +14,10 @@ general:
   # Número máximo de vencedores a manter no histórico
   winners_history_limit: 20
 
+discord:
+  webhook_url: ""
+  # Webhook do Discord para enviar notificações (deixe vazio para desativar)
+
 # Comandos personalizados a serem executados quando uma guerra começar ou terminar
 custom_messages:
   # Comandos a serem executados quando uma guerra começar, padrão é falso, irá substituir a mensagem padrão
@@ -22,7 +26,7 @@ custom_messages:
   custom_guerrastart:
     enabled: false
     commands:
-      - 'broadcast &6[Guerra] Uma guerra foi iniciada na %arena% digite /guerra entrar arenateste para se juntar!'
+      - 'broadcast &6[Guerra] Uma guerra foi iniciada na %arena% digite /guerra entrar para se juntar!'
 
   # Comandos a serem executados quando uma guerra terminar, padrão é falso, não substitui o relatório padrão
   # Placeholders disponíveis:

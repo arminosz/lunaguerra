@@ -4,6 +4,7 @@ main: dolozimm.lunaguerra.LunaGuerraPlugin
 api-version: '1.21'
 folia-supported: true
 depend: [SimpleClans]
+soft-depend: [PlaceholderAPI]
 authors: [dolozimm]
 description: Plugin para guerras de clans usando SimpleClans
 

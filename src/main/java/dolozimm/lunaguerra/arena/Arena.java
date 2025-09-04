@@ -126,7 +126,6 @@ public class Arena {
             taskId = -1;
         }
 
-        // Store all participants before clearing
         warParticipants = new HashMap<>();
         for (Map.Entry<String, Set<Player>> entry : participants.entrySet()) {
             warParticipants.put(entry.getKey(), new HashSet<>(entry.getValue()));

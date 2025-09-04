@@ -2,6 +2,8 @@ package dolozimm.lunaguerra.arena;
 
 import dolozimm.lunaguerra.LunaGuerraPlugin;
 import dolozimm.lunaguerra.config.ConfigManager;
+import dolozimm.lunaguerra.database.DatabaseManager;
+import dolozimm.lunaguerra.discord.DiscordWebhook;
 import dolozimm.lunaguerra.kit.KitManager;
 import dolozimm.lunaguerra.simpleclans.SimpleClansBridge;
 import org.bukkit.Bukkit;
@@ -12,7 +14,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,14 +22,18 @@ public class ArenaManager {
     private final LunaGuerraPlugin plugin;
     private final ConfigManager configManager;
     private final SimpleClansBridge clansBridge;
+    private final DatabaseManager databaseManager;
+    private DiscordWebhook discordWebhook;
     private final Map<String, Arena> arenas;
-
     private final KitManager kitManager;
 
-    public ArenaManager(LunaGuerraPlugin plugin, ConfigManager configManager, SimpleClansBridge clansBridge) {
+    public ArenaManager(LunaGuerraPlugin plugin, ConfigManager configManager, SimpleClansBridge clansBridge, 
+                       DatabaseManager databaseManager, DiscordWebhook discordWebhook) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.clansBridge = clansBridge;
+        this.databaseManager = databaseManager;
+        this.discordWebhook = discordWebhook;
         this.kitManager = plugin.getKitManager();
         this.arenas = new HashMap<>();
     }
@@ -130,6 +135,10 @@ public class ArenaManager {
             executeCustomCommands("custom_messages.custom_guerrastart", replacements);
         }
 
+        if (discordWebhook != null) {
+            discordWebhook.sendWarStarted(arena.getDisplayName());
+        }
+
         startCountdown(arena);
         return true;
     }
@@ -151,12 +160,10 @@ public class ArenaManager {
                     return;
                 }
 
-                // Formatação do tempo para minutos e segundos
                 int minutes = timeLeft / 60;
                 int seconds = timeLeft % 60;
                 String timeFormat = String.format("%02d:%02d", minutes, seconds);
 
-                // Atualizar action bar para todos os participantes
                 Map<String, String> replacements = new HashMap<>();
                 replacements.put("time", timeFormat);
                 String message = configManager.getMessage("guerra.countdown", replacements);
@@ -170,7 +177,6 @@ public class ArenaManager {
                     }
                 }
 
-                // Mensagens especiais em momentos importantes
                 if (timeLeft <= 5 || (timeLeft <= 30 && timeLeft % 10 == 0) || (timeLeft <= 60 && timeLeft % 30 == 0)) {
                     String chatMessage = configManager.getMessage("guerra.countdown_chat", replacements);
                     for (Set<Player> clanPlayers : arena.getParticipants().values()) {
@@ -196,7 +202,6 @@ public class ArenaManager {
         }
 
         if (arena.getTotalParticipants() < 2) {
-            // Send not enough players message to all participants
             String message = configManager.getMessage("guerra.not_enough_players");
             for (Set<Player> clanPlayers : arena.getParticipants().values()) {
                 for (Player player : clanPlayers) {
@@ -209,7 +214,6 @@ public class ArenaManager {
             return false;
         }
 
-        // Send start message to all participants
         String startMessage = configManager.getMessage("guerra.war_started");
         for (Set<Player> clanPlayers : arena.getParticipants().values()) {
             for (Player player : clanPlayers) {
@@ -229,7 +233,6 @@ public class ArenaManager {
             return false;
         }
 
-        // Broadcast cancellation message to all participants
         Map<String, String> replacements = new HashMap<>();
         String cancelMessage = configManager.getMessage("guerra.cancelled", replacements);
         for (Set<Player> clanPlayers : arena.getParticipants().values()) {
@@ -256,9 +259,22 @@ public class ArenaManager {
         Arena arena = arenas.get(arenaId);
         if (arena == null) return false;
 
+        if (databaseManager.isPlayerBanned(player.getName())) {
+            player.sendMessage(ChatColor.RED + "Você está banido e não pode participar de guerras!");
+            return false;
+        }
+
         if (!clansBridge.isInClan(player)) {
             Map<String, String> replacements = new HashMap<>();
             player.sendMessage(configManager.getMessage("guerra.only_clan_members", replacements));
+            return false;
+        }
+
+        String clanTag = clansBridge.getClanTag(player);
+        String cleanClanTag = clanTag.replaceAll("§[0-9a-fk-or]", "").replaceAll("&[0-9a-fk-or]", "");
+        
+        if (databaseManager.isClanBanned(cleanClanTag)) {
+            player.sendMessage(ChatColor.RED + "Seu clan está banido e não pode participar de guerras!");
             return false;
         }
 
@@ -266,7 +282,6 @@ public class ArenaManager {
             return false;
         }
 
-        String clanTag = clansBridge.getClanTag(player);
         if (!arena.addPlayer(player, clanTag)) {
             player.sendMessage(configManager.getMessage("guerra.full_clan"));
             return false;
@@ -286,6 +301,9 @@ public class ArenaManager {
         for (Arena arena : arenas.values()) {
             if (arena.removePlayer(player)) {
                 player.sendMessage(configManager.getMessage("guerra.left"));
+                if (arena.getSaida() != null) {
+                    player.teleport(arena.getSaida());
+                }
                 return true;
             }
         }
@@ -300,6 +318,7 @@ public class ArenaManager {
 
         if (killer != null && !clansBridge.areSameClan(player, killer)) {
             arena.addKill(killer);
+            databaseManager.addPlayerKill(killer.getName());
         }
 
         arena.removePlayer(player);
@@ -333,29 +352,66 @@ public class ArenaManager {
 
     private void endWar(Arena arena) {
         String winnerClan = arena.getWinnerClan();
-        // Send reports and end war
         sendReports(arena, winnerClan);
         arena.endWar();
 
         if (winnerClan != null) {
+            String cleanWinnerClan = winnerClan.replaceAll("§[0-9a-fk-or]", "").replaceAll("&[0-9a-fk-or]", "");
+            databaseManager.addClanWin(cleanWinnerClan);
             configManager.addWinner(winnerClan, choosePlayerForPrize(arena, winnerClan).getName());
+            
+            if (discordWebhook != null) {
+                int totalKills = arena.getKillsPerClan().getOrDefault(winnerClan, 0);
+                String topList = buildTopList(arena);
+                discordWebhook.sendWarWinner(arena.getDisplayName(), winnerClan, totalKills, topList);
+            }
         }
     }
 
+    private String buildTopList(Arena arena) {
+        Map<String, Integer> clanRanking = arena.getClanRanking();
+        List<Map.Entry<String, Integer>> sortedRanking = clanRanking.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .limit(10)
+                .collect(Collectors.toList());
+        
+        StringBuilder topList = new StringBuilder();
+        for (int i = 0; i < sortedRanking.size(); i++) {
+            Map.Entry<String, Integer> entry = sortedRanking.get(i);
+            String clanName = getClanName(entry.getKey());
+            String medal = i < 3 ? (i == 0 ? "🥇" : i == 1 ? "🥈" : "🥉") : String.valueOf(i + 1) + ".";
+            topList.append(medal).append(" **").append(clanName).append("** - ").append(entry.getValue()).append(" kills");
+            if (i < sortedRanking.size() - 1) topList.append("\\n");
+        }
+        return topList.toString();
+    }
+    
+    private String getClanName(String clanTag) {
+        try {
+            net.sacredlabyrinth.phaed.simpleclans.SimpleClans sc = net.sacredlabyrinth.phaed.simpleclans.SimpleClans.getInstance();
+            if (sc != null) {
+                return sc.getClanManager().getClans().stream()
+                    .filter(clan -> clan.getTag().equals(clanTag.replaceAll("§[0-9a-fk-or]", "").replaceAll("&[0-9a-fk-or]", "")))
+                    .map(clan -> clan.getName())
+                    .findFirst()
+                    .orElse(clanTag);
+            }
+        } catch (Exception e) {
+        }
+        return clanTag;
+    }
+
     private Player choosePlayerForPrize(Arena arena, String winnerClan) {
-        // Priority 1: First online leader (random if multiple)
         List<Player> onlineLeaders = clansBridge.getOnlineClanLeaders(winnerClan);
         if (!onlineLeaders.isEmpty()) {
             return onlineLeaders.get(new Random().nextInt(onlineLeaders.size()));
         }
 
-        // Priority 2: Player with most kills
         Player topKiller = arena.getTopKiller(winnerClan);
         if (topKiller != null && topKiller.isOnline()) {
             return topKiller;
         }
 
-        // Priority 3: Any random online clan member
         List<Player> onlineMembers = new ArrayList<>();
         for (Set<Player> clanPlayers : arena.getParticipants().values()) {
             for (Player player : clanPlayers) {
@@ -384,37 +440,24 @@ public class ArenaManager {
         if (winnerClan != null) {
             globalReplacements.put("tagclanvencedor", winnerClan);
             
-            // Winner announcement to everyone
             Bukkit.broadcastMessage(configManager.getMessage("guerra.winner_announce", globalReplacements));
             
-            // Add prizeholder for custom end commands
             Player prizeHolder = choosePlayerForPrize(arena, winnerClan);
             if (prizeHolder != null) {
                 globalReplacements.put("prizeholder", prizeHolder.getName());
                 
-                // Execute custom end commands if enabled
                 if (configManager.getConfig().getBoolean("custom_messages.custom_guerraend.enabled", false)) {
                     executeCustomCommands("custom_messages.custom_guerraend", globalReplacements);
                 }
             }
         }
 
-        // Build a map of clan positions
-        Map<String, Integer> clanPositions = new HashMap<>();
-        for (int i = 0; i < sortedRanking.size(); i++) {
-            clanPositions.put(sortedRanking.get(i).getKey(), i + 1);
-        }
-
-        // Send clan-specific reports to each clan's online members
         for (String clanTag : arena.getWarParticipants().keySet()) {
-            // Get ALL players that participated from this clan
             Set<Player> participants = arena.getWarParticipants().get(clanTag);
             if (participants == null) continue;
 
-            // Get online members of this clan to send the report
             List<Player> onlineMembers = clansBridge.getOnlineClanMembers(clanTag);
 
-            // Get this clan's position
             int position = 0;
             for (int i = 0; i < sortedRanking.size(); i++) {
                 if (sortedRanking.get(i).getKey().equals(clanTag)) {
@@ -423,13 +466,9 @@ public class ArenaManager {
                 }
             }
 
-            // Send report to all online clan members
             for (Player member : onlineMembers) {
-
-                // Report header
                 member.sendMessage(configManager.getMessage("guerra.report_title", globalReplacements));
 
-                // Show only this clan's position and kills
                 Map<String, String> clanReplacements = new HashMap<>();
                 clanReplacements.put("position", String.valueOf(position));
                 clanReplacements.put("clan", clanTag);
@@ -437,7 +476,6 @@ public class ArenaManager {
                 member.sendMessage(configManager.getMessage("guerra.report_line_position", clanReplacements));
                 member.sendMessage(configManager.getMessage("guerra.report_line_kills", clanReplacements));
 
-                // Show this clan's top killer
                 Player topKiller = arena.getTopKiller(clanTag);
                 if (topKiller != null) {
                     Map<String, String> killerReplacements = new HashMap<>();
@@ -446,7 +484,6 @@ public class ArenaManager {
                     member.sendMessage(configManager.getMessage("guerra.report_line_topkiller", killerReplacements));
                 }
 
-                // Victory status
                 if (winnerClan != null && winnerClan.equals(clanTag)) {
                     member.sendMessage(configManager.getMessage("guerra.report_line_prize", globalReplacements));
                 } else {
@@ -559,5 +596,24 @@ public class ArenaManager {
     public void reloadArenas() {
         stopAllWars();
         loadArenas();
+    }
+    
+    public void updateDiscordWebhook(DiscordWebhook newWebhook) {
+        this.discordWebhook = newWebhook;
+        plugin.getLogger().info("ArenaManager: Discord webhook reference updated");
+    }
+
+    public void removeBannedPlayer(Player player) {
+        Arena arena = getPlayerArena(player);
+        if (arena != null && arena.getState() != Arena.State.IDLE) {
+            arena.removePlayer(player);
+            player.sendMessage(ChatColor.RED + "Você foi banido e removido da guerra!");
+            if (arena.getSaida() != null) {
+                player.teleport(arena.getSaida());
+            }
+            if (arena.getState() == Arena.State.COMBAT) {
+                checkWarEnd(arena);
+            }
+        }
     }
 }

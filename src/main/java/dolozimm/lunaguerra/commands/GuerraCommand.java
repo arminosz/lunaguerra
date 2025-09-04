@@ -4,9 +4,9 @@ import dolozimm.lunaguerra.LunaGuerraPlugin;
 import dolozimm.lunaguerra.arena.Arena;
 import dolozimm.lunaguerra.arena.ArenaManager;
 import dolozimm.lunaguerra.config.ConfigManager;
+import dolozimm.lunaguerra.database.DatabaseManager;
 import dolozimm.lunaguerra.kit.KitManager;
-
-import org.bukkit.inventory.Inventory;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -24,12 +24,15 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
     private final ArenaManager arenaManager;
     private final ConfigManager configManager;
     private final KitManager kitManager;
+    private final DatabaseManager databaseManager;
 
-    public GuerraCommand(LunaGuerraPlugin plugin, ArenaManager arenaManager, ConfigManager configManager, KitManager kitManager) {
+    public GuerraCommand(LunaGuerraPlugin plugin, ArenaManager arenaManager, ConfigManager configManager, 
+                        KitManager kitManager, DatabaseManager databaseManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.configManager = configManager;
         this.kitManager = kitManager;
+        this.databaseManager = databaseManager;
     }
 
     @Override
@@ -72,6 +75,18 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
                 return handleLimit(sender, args);
             case "kit":
                 return handleKit(sender, args);
+            case "top":
+                return handleTop(sender, args);
+            case "banclan":
+                return handleBanClan(sender, args);
+            case "banplayer":
+                return handleBanPlayer(sender, args);
+            case "unbanclan":
+                return handleUnbanClan(sender, args);
+            case "unbanplayer":
+                return handleUnbanPlayer(sender, args);
+            case "baninfo":
+                return handleBanInfo(sender, args);
             default:
                 sendHelp(sender);
                 return true;
@@ -408,6 +423,7 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
         try {
             configManager.loadConfigs();
             arenaManager.reloadArenas();
+            plugin.reloadDiscordWebhook();
             sender.sendMessage(ChatColor.GREEN + "Configurações recarregadas com sucesso!");
         } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Erro ao recarregar configurações: " + e.getMessage());
@@ -518,7 +534,193 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleTop(CommandSender sender, String[] args) {
+        int limit = 10;
+        if (args.length > 1) {
+            try {
+                limit = Integer.parseInt(args[1]);
+                limit = Math.max(1, Math.min(limit, 50));
+            } catch (NumberFormatException e) {
+                limit = 10;
+            }
+        }
 
+        List<Map<String, Object>> clanTop = databaseManager.getClanTop(limit);
+        List<Map<String, Object>> playerTop = databaseManager.getPlayerTop(limit);
+
+        sender.sendMessage(ChatColor.GOLD + "=== TOP " + limit + " CLANS (VITÓRIAS) ===");
+        if (clanTop.isEmpty()) {
+            sender.sendMessage(ChatColor.YELLOW + "Nenhum clan com vitórias registradas!");
+        } else {
+            for (int i = 0; i < clanTop.size(); i++) {
+                Map<String, Object> entry = clanTop.get(i);
+                String clanTag = (String) entry.get("clan_tag");
+                int wins = (Integer) entry.get("wins");
+                
+                String medal = i == 0 ? "🥇" : i == 1 ? "🥈" : i == 2 ? "🥉" : (i + 1) + ".";
+                sender.sendMessage(ChatColor.YELLOW + medal + " " + ChatColor.translateAlternateColorCodes('&', clanTag) + 
+                                  ChatColor.GRAY + " - " + ChatColor.WHITE + wins + " vitórias");
+            }
+        }
+
+        sender.sendMessage("");
+        sender.sendMessage(ChatColor.GOLD + "=== TOP " + limit + " PLAYERS (KILLS) ===");
+        if (playerTop.isEmpty()) {
+            sender.sendMessage(ChatColor.YELLOW + "Nenhum player com kills registrados!");
+        } else {
+            for (int i = 0; i < playerTop.size(); i++) {
+                Map<String, Object> entry = playerTop.get(i);
+                String playerName = (String) entry.get("player_name");
+                int kills = (Integer) entry.get("kills");
+                
+                String medal = i == 0 ? "🥇" : i == 1 ? "🥈" : i == 2 ? "🥉" : (i + 1) + ".";
+                sender.sendMessage(ChatColor.YELLOW + medal + " " + ChatColor.WHITE + playerName + 
+                                  ChatColor.GRAY + " - " + ChatColor.RED + kills + " kills");
+            }
+        }
+        return true;
+    }
+
+    private boolean handleBanClan(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lunaguerra.admin")) {
+            sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Uso: /guerra banclan <clan> [motivo]");
+            return true;
+        }
+
+        String clanTag = args[1];
+        String reason = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length)) : "Nenhum motivo especificado";
+
+        databaseManager.banClan(clanTag, sender.getName(), reason);
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (plugin.getClansBridge().isInClan(player)) {
+                String playerClanTag = plugin.getClansBridge().getClanTag(player);
+                String cleanPlayerClanTag = playerClanTag.replaceAll("§[0-9a-fk-or]", "").replaceAll("&[0-9a-fk-or]", "");
+                if (cleanPlayerClanTag.equals(clanTag)) {
+                    arenaManager.removeBannedPlayer(player);
+                }
+            }
+        }
+
+        sender.sendMessage(ChatColor.GREEN + "Clan " + clanTag + " foi banido com sucesso!");
+        return true;
+    }
+
+    private boolean handleBanPlayer(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lunaguerra.admin")) {
+            sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Uso: /guerra banplayer <player> [motivo]");
+            return true;
+        }
+
+        String playerName = args[1];
+        String reason = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length)) : "Nenhum motivo especificado";
+
+        databaseManager.banPlayer(playerName, sender.getName(), reason);
+
+        Player player = Bukkit.getPlayer(playerName);
+        if (player != null && player.isOnline()) {
+            arenaManager.removeBannedPlayer(player);
+        }
+
+        sender.sendMessage(ChatColor.GREEN + "Player " + playerName + " foi banido com sucesso!");
+        return true;
+    }
+
+    private boolean handleUnbanClan(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lunaguerra.admin")) {
+            sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Uso: /guerra unbanclan <clan>");
+            return true;
+        }
+
+        String clanTag = args[1];
+        
+        if (!databaseManager.isClanBanned(clanTag)) {
+            sender.sendMessage(ChatColor.RED + "Este clan não está banido!");
+            return true;
+        }
+
+        databaseManager.unbanClan(clanTag);
+        sender.sendMessage(ChatColor.GREEN + "Clan " + clanTag + " foi desbanido com sucesso!");
+        return true;
+    }
+
+    private boolean handleUnbanPlayer(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lunaguerra.admin")) {
+            sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Uso: /guerra unbanplayer <player>");
+            return true;
+        }
+
+        String playerName = args[1];
+        
+        if (!databaseManager.isPlayerBanned(playerName)) {
+            sender.sendMessage(ChatColor.RED + "Este player não está banido!");
+            return true;
+        }
+
+        databaseManager.unbanPlayer(playerName);
+        sender.sendMessage(ChatColor.GREEN + "Player " + playerName + " foi desbanido com sucesso!");
+        return true;
+    }
+
+    private boolean handleBanInfo(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lunaguerra.admin")) {
+            sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Uso: /guerra baninfo <clan|player>");
+            return true;
+        }
+
+        String target = args[1];
+        
+        Map<String, String> clanBanInfo = databaseManager.getBanInfo(target, true);
+        Map<String, String> playerBanInfo = databaseManager.getBanInfo(target, false);
+
+        if (clanBanInfo == null && playerBanInfo == null) {
+            sender.sendMessage(ChatColor.RED + "Nenhum banimento encontrado para: " + target);
+            return true;
+        }
+
+        sender.sendMessage(ChatColor.GOLD + "=== Informações de Ban - " + target + " ===");
+        
+        if (clanBanInfo != null) {
+            sender.sendMessage(ChatColor.YELLOW + "Tipo: " + ChatColor.RED + "CLAN");
+            sender.sendMessage(ChatColor.YELLOW + "Banido por: " + ChatColor.WHITE + clanBanInfo.get("banned_by"));
+            sender.sendMessage(ChatColor.YELLOW + "Data: " + ChatColor.WHITE + clanBanInfo.get("ban_date"));
+            sender.sendMessage(ChatColor.YELLOW + "Motivo: " + ChatColor.WHITE + clanBanInfo.get("reason"));
+        }
+        
+        if (playerBanInfo != null) {
+            sender.sendMessage(ChatColor.YELLOW + "Tipo: " + ChatColor.RED + "PLAYER");
+            sender.sendMessage(ChatColor.YELLOW + "Banido por: " + ChatColor.WHITE + playerBanInfo.get("banned_by"));
+            sender.sendMessage(ChatColor.YELLOW + "Data: " + ChatColor.WHITE + playerBanInfo.get("ban_date"));
+            sender.sendMessage(ChatColor.YELLOW + "Motivo: " + ChatColor.WHITE + playerBanInfo.get("reason"));
+        }
+        
+        return true;
+    }
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(ChatColor.GREEN + "=== Ajuda do Plugin LunaGuerra ===");
@@ -527,8 +729,8 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/guerra sair" + ChatColor.WHITE + " - Sair da guerra atual");
             sender.sendMessage(ChatColor.YELLOW + "/guerra camarote <arena>" + ChatColor.WHITE + " - Assistir uma guerra");
         }
-        // Winners command is available to everyone
         sender.sendMessage(ChatColor.YELLOW + "/guerra vencedores [quantidade]" + ChatColor.WHITE + " - Ver últimos vencedores");
+        sender.sendMessage(ChatColor.YELLOW + "/guerra top [quantidade]" + ChatColor.WHITE + " - Ver top clans e players");
         if (sender.hasPermission("lunaguerra.info")) {
             sender.sendMessage(ChatColor.YELLOW + "/guerra info <arena>" + ChatColor.WHITE + " - Ver informações de uma arena");
         }
@@ -541,6 +743,11 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/guerra displayname <arena> <nome>" + ChatColor.WHITE + " - Alterar nome da arena (use \"aspas\" para nomes com espaços)");
             sender.sendMessage(ChatColor.YELLOW + "/guerra limit <arena> <quantidade>" + ChatColor.WHITE + " - Alterar limite de jogadores");
             sender.sendMessage(ChatColor.YELLOW + "/guerra reload" + ChatColor.WHITE + " - Recarregar configurações");
+            sender.sendMessage(ChatColor.YELLOW + "/guerra banclan <clan> [motivo]" + ChatColor.WHITE + " - Banir um clan");
+            sender.sendMessage(ChatColor.YELLOW + "/guerra banplayer <player> [motivo]" + ChatColor.WHITE + " - Banir um player");
+            sender.sendMessage(ChatColor.YELLOW + "/guerra unbanclan <clan>" + ChatColor.WHITE + " - Desbanir um clan");
+            sender.sendMessage(ChatColor.YELLOW + "/guerra unbanplayer <player>" + ChatColor.WHITE + " - Desbanir um player");
+            sender.sendMessage(ChatColor.YELLOW + "/guerra baninfo <clan|player>" + ChatColor.WHITE + " - Ver informações de ban");
         }
         if (sender.hasPermission("lunaguerra.set")) {
             sender.sendMessage(ChatColor.YELLOW + "/guerra set <arena> <camarote|espera|inicio|saida>" + ChatColor.WHITE + " - Definir locais da arena");
@@ -554,8 +761,7 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> subCommands = new ArrayList<>();
 
-            // Add winners command for everyone
-            subCommands.add("vencedores");
+            subCommands.addAll(Arrays.asList("vencedores", "top"));
             
             if (sender.hasPermission("lunaguerra.join")) {
                 subCommands.addAll(Arrays.asList("entrar", "sair", "camarote"));
@@ -565,7 +771,7 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
             }
 
             if (sender.hasPermission("lunaguerra.admin")) {
-                subCommands.addAll(Arrays.asList("start", "stop", "forcestart", "create", "delete", "reload", "displayname", "limit", "kit"));
+                subCommands.addAll(Arrays.asList("start", "stop", "forcestart", "create", "delete", "reload", "displayname", "limit", "kit", "banclan", "banplayer", "unbanclan", "unbanplayer", "baninfo"));
             }
             if (sender.hasPermission("lunaguerra.set")) {
                 subCommands.add("set");
@@ -590,6 +796,7 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
                     arenaManager.getArenas().forEach(arena -> options.add(arena.getId()));
                     break;
                 case "vencedores":
+                case "top":
                     options.addAll(Arrays.asList("5", "10", "15", "20"));
                     break;
             }
@@ -605,8 +812,6 @@ public class GuerraCommand implements CommandExecutor, TabCompleter {
                 List<String> limits = Arrays.asList("1", "2", "3", "4", "5", "10", "15", "20");
                 StringUtil.copyPartialMatches(args[2], limits, completions);
             } else if (subCommand.equals("displayname")) {
-                // For displayname, we don't provide completions for the actual name
-                // as it's free-form text that can be quoted
                 return completions;
             }
         }

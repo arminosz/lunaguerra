@@ -43,9 +43,9 @@ public class KitManager {
 
         try {
             kitConfig.save(kitFile);
-            player.sendMessage("§aKit saved successfully for arena " + arena);
+            player.sendMessage("§aKit salvo com sucesso para a arena " + arena);
         } catch (IOException e) {
-            player.sendMessage("§cError saving kit for arena " + arena);
+            player.sendMessage("§cErro salvando kit " + arena);
             e.printStackTrace();
         }
     }
@@ -53,7 +53,7 @@ public class KitManager {
     public void applyKitToPlayer(Player player, String arena) {
         File kitFile = new File(kitsFolder, "kit_" + arena + ".yml");
         if (!kitFile.exists()) {
-            player.sendMessage("§cNo kit found for arena " + arena);
+            player.sendMessage("§cNenhum kit encontrado para a arena " + arena);
             return;
         }
 
