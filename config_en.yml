@@ -11,6 +11,10 @@ general:
   # Maximum number of winners to keep in the history
   winners_history_limit: 20
 
+discord:
+  webhook_url: ""
+  # Webhook Url for Discord, leave blank if you don't want it
+
 # Custom commands to execute when a war starts or ends
 custom_messages:
   # Commands to execute when a war starts, default is false, will override the default message
