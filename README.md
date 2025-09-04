@@ -84,8 +84,8 @@ Comando principal para interagir com o plugin LunaGuerra. Todos os subcomandos s
 * **Comandos**:
   * `/guerra banclan <nome> [motivo]` – Banir um clã
   * `/guerra banplayer <nome> [motivo]` – Banir um jogador
-  * `/guerra unbanclan <nome> [motivo]` – Desbanir um clã
-  * `/guerra unbanplayer <nome> [motivo]` – Desbanir um jogador
+  * `/guerra unbanclan <nome>` – Desbanir um clã
+  * `/guerra unbanplayer <nome>` – Desbanir um jogador
   * `/guerra baninfo <nome>` – Ver informações de banimentos
 * Clãs e jogadores banidos são removidos imediatamente de guerras ativas e não podem participar de novas guerras.
 * Clãs ou jogadores banidos são automaticamente removidos do /clan top
